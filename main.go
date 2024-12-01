@@ -14,8 +14,11 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file", err.Error())
+	if os.Getenv("ENV") != "PROD" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Println("Warning: .env file not found, proceeding with defaults.")
+		}
 	}
 
 	disconnectMongoDB := config.ConnectMongoDB()
