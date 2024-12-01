@@ -13,7 +13,7 @@ func GetUser(c *gin.Context) {
 
 	user, err := users.GetUserById(userId.(string))
 	if err != nil {
-		c.Error(err)
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 

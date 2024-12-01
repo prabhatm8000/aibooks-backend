@@ -88,3 +88,6 @@ Temporary Items
 
 # Environment files
 .env
+
+# Air tmp
+tmp/*

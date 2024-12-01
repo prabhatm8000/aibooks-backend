@@ -94,14 +94,14 @@ func GetUserById(id string) (Users, error) {
 	if err == primitive.ErrInvalidHex {
 		return user, errorHandling.NewAPIError(400, GetUserById, "Invalid user id")
 	} else if err != nil {
-		return user, errorHandling.NewAPIError(500, GetUserById, "Something went wrong")
+		return user, errorHandling.NewAPIError(500, GetUserById, err.Error())
 	}
 
 	err = UsersCollection.FindOne(ctx, bson.M{"_id": idObj}).Decode(&user)
 	if err == mongo.ErrNoDocuments {
 		return user, errorHandling.NewAPIError(404, err, "User not found")
 	} else if err != nil {
-		return user, errorHandling.NewAPIError(500, GetUserById, "Something went wrong")
+		return user, errorHandling.NewAPIError(500, GetUserById, err.Error())
 	}
 
 	return user, nil
@@ -120,7 +120,7 @@ func GetUserBySub(sub string) (Users, error) {
 	if err == mongo.ErrNoDocuments {
 		return user, errorHandling.NewAPIError(404, err, "User not found")
 	} else if err != nil {
-		return user, errorHandling.NewAPIError(500, GetUserBySub, "Something went wrong")
+		return user, errorHandling.NewAPIError(500, GetUserBySub, err.Error())
 	}
 
 	return user, nil

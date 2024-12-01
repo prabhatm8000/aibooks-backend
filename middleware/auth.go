@@ -10,7 +10,7 @@ func IsAuthenticated(c *gin.Context) {
 	userId := session.Get("user_id")
 
 	if userId == nil {
-		c.IndentedJSON(401, gin.H{"message": "Unauthorized"})
+		c.IndentedJSON(401, gin.H{"message": "Sign in first."})
 		c.Abort()
 		return
 	}

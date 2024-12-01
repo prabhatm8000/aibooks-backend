@@ -17,7 +17,7 @@ func (e APIError) Error() string {
 }
 
 func NewAPIError(status int, i interface{}, message string) error {
-	log.Printf("GIN_MODE: %s, %s: %s", os.Getenv("GIN_MODE"), GetFunctionName(i), message)
+	log.Printf("\nGIN_MODE: %s, Code: %d, %s: %s", os.Getenv("GIN_MODE"), status, GetFunctionName(i), message)
 	return APIError{Status: status, Message: message}
 }
 

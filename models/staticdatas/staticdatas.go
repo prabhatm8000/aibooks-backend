@@ -31,7 +31,7 @@ func GetStaticDataByType(dataType string) (StaticData, error) {
 	if err == mongo.ErrNoDocuments {
 		return staticData, errorHandling.NewAPIError(404, GetStaticDataByType, "Static data not found")
 	} else if err != nil {
-		return staticData, errorHandling.NewAPIError(500, GetStaticDataByType, "Something went wrong")
+		return staticData, errorHandling.NewAPIError(500, GetStaticDataByType, err.Error())
 	}
 
 	return staticData, nil

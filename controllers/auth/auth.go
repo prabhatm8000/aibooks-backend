@@ -31,7 +31,7 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			CurrentUrl string `json:"currentUrl"`
 		}
 		if err := c.ShouldBindJSON(&currentUrl); err != nil {
-			c.IndentedJSON(400, gin.H{"message": "Something went wrong while getting currentUrl"})
+			c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 			return
 		}
 

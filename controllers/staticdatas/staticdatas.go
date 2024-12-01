@@ -11,7 +11,7 @@ func GetStaticDataByDataType(c *gin.Context) {
 
 	staticData, err := staticdatas.GetStaticDataByType(dataType)
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 

@@ -13,7 +13,7 @@ func AddRating(c *gin.Context) {
 	var rating books.Rating
 
 	if err := c.ShouldBindJSON(&rating); err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
@@ -21,7 +21,7 @@ func AddRating(c *gin.Context) {
 	userId := session.Get("user_id")
 	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
@@ -29,11 +29,11 @@ func AddRating(c *gin.Context) {
 
 	ratingId, err := books.AddRating(rating)
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
-	c.IndentedJSON(200, gin.H{"message": "Rating added successfully", "ratingId": ratingId})
+	c.IndentedJSON(200, gin.H{"message": "Rating added successfully.", "ratingId": ratingId})
 }
 
 func GetRatingsById(c *gin.Context) {
@@ -41,22 +41,22 @@ func GetRatingsById(c *gin.Context) {
 
 	rating, err := books.GetRatingsById(id)
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
 	c.IndentedJSON(200, rating)
 }
 
-func GetRatingByUserIdBookId(c *gin.Context) {
+func GetMyRatingForBookId(c *gin.Context) {
 	bookId := c.Param("bookId")
 
 	session := sessions.Default(c)
 	userId := session.Get("user_id")
 
-	rating, err := books.GetRatingByUserIdBookId(userId.(string), bookId)
+	rating, err := books.GetMyRatingForBookId(userId.(string), bookId)
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
@@ -72,7 +72,7 @@ func GetRatingsByBookId(c *gin.Context) {
 
 	rating, err := books.GetRatingsByBookId(bookId, int(limit), int(page), sortBy, int(sortOrder))
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
@@ -86,9 +86,9 @@ func DeleteRatingById(c *gin.Context) {
 
 	err := books.DeleteRatingById(id, userId.(string))
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"message": err.Error()})
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
 	}
 
-	c.IndentedJSON(200, gin.H{"message": "Rating deleted successfully"})
+	c.IndentedJSON(200, gin.H{"message": "Rating deleted successfully."})
 }

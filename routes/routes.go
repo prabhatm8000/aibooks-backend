@@ -11,4 +11,5 @@ func RegisterRoutes(r *gin.Engine) {
 	RegisterAuthRoutes(apiRoutes)
 	RegisterBookdataRoutes(apiRoutes)
 	RegisterStaticDataRoutes(apiRoutes)
+	RegisterLibraryRoutes(apiRoutes)
 }

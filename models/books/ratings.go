@@ -40,34 +40,91 @@ func AddRating(rating Rating) (primitive.ObjectID, error) {
 		RatingsCollection = config.GetCollection(RatingsCollectionName)
 	}
 
+	if BooksCollection == nil {
+		BooksCollection = config.GetCollection(BooksCollectionName)
+	}
+
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
-	rating.UpdatedAt = primitive.NewDateTimeFromTime(time.Now())
-
-	existingRating := Rating{}
-	err := RatingsCollection.FindOne(ctx, bson.M{"userId": rating.UserId, "bookId": rating.BookId}).Decode(&existingRating)
-	if err == nil && existingRating.UserId == rating.UserId && existingRating.BookId == rating.BookId {
-		_, err = RatingsCollection.UpdateByID(ctx, existingRating.Id, bson.M{"$set": bson.M{
-			"rating":    rating.Rating,
-			"review":    rating.Review,
-			"updatedAt": rating.UpdatedAt,
-		}})
-		if err != nil {
-			return primitive.NilObjectID, errorHandling.NewAPIError(500, AddRating, err.Error())
-		}
-		return primitive.NilObjectID, nil
-	}
-
-	rating.Id = primitive.NewObjectID()
-	rating.CreatedAt = primitive.NewDateTimeFromTime(time.Now())
-
-	doc, err := RatingsCollection.InsertOne(ctx, rating)
+	client := config.GetDB().Client()
+	session, err := client.StartSession()
 	if err != nil {
-		return primitive.NilObjectID, errorHandling.NewAPIError(500, AddRating, err.Error())
+		return primitive.NilObjectID, errorHandling.NewAPIError(500, "AddRating", "Failed to start session")
+	}
+	defer session.EndSession(ctx)
+
+	result, err := session.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+		rating.UpdatedAt = primitive.NewDateTimeFromTime(time.Now())
+
+		// Check if the user has already rated this book
+		existingRating := Rating{}
+		err := RatingsCollection.FindOne(sessCtx, bson.M{"userId": rating.UserId, "bookId": rating.BookId}).Decode(&existingRating)
+		if err == nil && existingRating.UserId == rating.UserId && existingRating.BookId == rating.BookId {
+			_, err = RatingsCollection.UpdateByID(sessCtx, existingRating.Id, bson.M{
+				"$set": bson.M{
+					"rating":    rating.Rating,
+					"review":    rating.Review,
+					"updatedAt": rating.UpdatedAt,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			// Adjust the book's ratings (existing rating updated)
+			_, err := BooksCollection.UpdateOne(
+				sessCtx,
+				bson.M{"_id": rating.BookId},
+				bson.D{
+					{
+						Key: "$inc", Value: bson.D{
+							{Key: "sumRatings", Value: rating.Rating - existingRating.Rating},
+						},
+					},
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return existingRating.Id, nil
+		}
+
+		// Add a new rating
+		rating.Id = primitive.NewObjectID()
+		rating.CreatedAt = primitive.NewDateTimeFromTime(time.Now())
+
+		_, err = RatingsCollection.InsertOne(sessCtx, rating)
+		if err != nil {
+			return nil, err
+		}
+
+		// Adjust the book's ratings (new rating added)
+		_, err = BooksCollection.UpdateOne(
+			sessCtx,
+			bson.M{"_id": rating.BookId},
+			bson.D{
+				{
+					Key: "$inc", Value: bson.D{
+						{Key: "sumRatings", Value: rating.Rating},
+						{Key: "totalRatings", Value: 1},
+					},
+				},
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return rating.Id, nil
+	})
+
+	if err != nil {
+		return primitive.NilObjectID, errorHandling.NewAPIError(500, "AddRating", err.Error())
 	}
 
-	return doc.InsertedID.(primitive.ObjectID), nil
+	return result.(primitive.ObjectID), nil
 }
 
 func GetRatingsById(id string) (Rating, error) {
@@ -83,20 +140,20 @@ func GetRatingsById(id string) (Rating, error) {
 	if err == primitive.ErrInvalidHex {
 		return rating, errorHandling.NewAPIError(400, GetRatingsById, "Invalid rating id")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetRatingsById, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, GetRatingsById, "Uh oh! Something went wrong.")
 	}
 
 	err = RatingsCollection.FindOne(ctx, bson.M{"_id": idObj}).Decode(&rating)
 	if err == mongo.ErrNoDocuments {
 		return rating, errorHandling.NewAPIError(404, err, "Rating not found")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetRatingsById, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, GetRatingsById, "Uh oh! Something went wrong.")
 	}
 
 	return rating, nil
 }
 
-func GetRatingByUserIdBookId(userId string, bookId string) (RatingResponse, error) {
+func GetMyRatingForBookId(userId string, bookId string) (RatingResponse, error) {
 	if RatingsCollection == nil {
 		RatingsCollection = config.GetCollection(RatingsCollectionName)
 	}
@@ -107,26 +164,55 @@ func GetRatingByUserIdBookId(userId string, bookId string) (RatingResponse, erro
 
 	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err == primitive.ErrInvalidHex {
-		return rating, errorHandling.NewAPIError(400, GetRatingByUserIdBookId, "Invalid user id")
+		return rating, errorHandling.NewAPIError(400, GetMyRatingForBookId, "Invalid user id")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetRatingByUserIdBookId, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, GetMyRatingForBookId, "Uh oh! Something went wrong.")
 	}
 
 	bookIdObj, err := primitive.ObjectIDFromHex(bookId)
 	if err == primitive.ErrInvalidHex {
-		return rating, errorHandling.NewAPIError(400, GetRatingByUserIdBookId, "Invalid book id")
+		return rating, errorHandling.NewAPIError(400, GetMyRatingForBookId, "Invalid book id")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetRatingByUserIdBookId, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, GetMyRatingForBookId, "Uh oh! Something went wrong.")
 	}
 
-	err = RatingsCollection.FindOne(ctx, bson.M{"userId": userIdObj, "bookId": bookIdObj}).Decode(&rating)
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				"userId": userIdObj,
+				"bookId": bookIdObj,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "users",
+				"localField":   "userId",
+				"foreignField": "_id",
+				"as":           "user",
+			},
+		},
+		{
+			"$unwind": "$user",
+		},
+	}
+
+	cursor, err := RatingsCollection.Aggregate(ctx, pipeline)
 	if err == mongo.ErrNoDocuments {
 		return rating, errorHandling.NewAPIError(404, err, "Rating not found")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetRatingByUserIdBookId, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, GetMyRatingForBookId, err.Error())
 	}
 
-	return rating, nil
+	var results []RatingResponse
+	err = cursor.All(ctx, &results)
+	if err != nil {
+		return rating, errorHandling.NewAPIError(500, GetMyRatingForBookId, err.Error())
+	}
+
+	if len(results) == 0 {
+		return rating, nil
+	}
+	return results[0], nil
 }
 
 func GetRatingsByBookId(bookId string, limit int, page int, sortBy string, sortOrder int) ([]RatingResponse, error) {
@@ -142,7 +228,7 @@ func GetRatingsByBookId(bookId string, limit int, page int, sortBy string, sortO
 	if err == primitive.ErrInvalidHex {
 		return ratings, errorHandling.NewAPIError(400, GetRatingsByBookId, "Invalid book id")
 	} else if err != nil {
-		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, "Something went wrong")
+		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, err.Error())
 	}
 
 	skip := limit * (page - 1)
@@ -196,44 +282,50 @@ func GetRatingsByBookId(bookId string, limit int, page int, sortBy string, sortO
 
 	cursor, err := RatingsCollection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, "Something went wrong")
+		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, err.Error())
 	}
 
 	err = cursor.All(ctx, &ratings)
 	if err != nil {
-		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, "Something went wrong")
+		return ratings, errorHandling.NewAPIError(500, GetRatingsByBookId, err.Error())
 	}
 
 	return ratings, nil
 }
 
-func GetBookRatingSummary(bookId string) (interface{}, error) {
+func GetBookRatingSummary(bookId string) (float64, error) {
 	if RatingsCollection == nil {
 		RatingsCollection = config.GetCollection(RatingsCollectionName)
 	}
 
-	var rating interface{}
+	var rating float64
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
 	bookIdObj, err := primitive.ObjectIDFromHex(bookId)
 	if err == primitive.ErrInvalidHex {
-		return rating, errorHandling.NewAPIError(400, GetBookRatingSummary, "Invalid book id")
+		return rating, errorHandling.NewAPIError(400, "GetBookRatingSummary", "Invalid book id")
 	} else if err != nil {
-		return rating, errorHandling.NewAPIError(500, GetBookRatingSummary, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, "GetBookRatingSummary", err.Error())
 	}
 
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"book": bookIdObj,
+				"bookId": bookIdObj,
 			},
 		},
 		{
 			"$group": bson.M{
-				"_id": "$book",
-				"rating": bson.M{
-					"$sum": "$rating",
+				"_id":        "$bookId",
+				"sumRatings": bson.M{"$sum": "$rating"},
+				"count":      bson.M{"$sum": 1},
+			},
+		},
+		{
+			"$project": bson.M{
+				"ratingAverage": bson.M{
+					"$divide": []interface{}{"$sumRatings", "$count"},
 				},
 			},
 		},
@@ -241,12 +333,29 @@ func GetBookRatingSummary(bookId string) (interface{}, error) {
 
 	cursor, err := RatingsCollection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return 0, errorHandling.NewAPIError(500, GetBookRatingSummary, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, "GetBookRatingSummary", err.Error())
 	}
 
-	err = cursor.All(ctx, &rating)
+	var result []interface{}
+	err = cursor.All(ctx, &result)
 	if err != nil {
-		return 0, errorHandling.NewAPIError(500, GetBookRatingSummary, "Something went wrong")
+		return rating, errorHandling.NewAPIError(500, "GetBookRatingSummary", err.Error())
+	}
+
+	if len(result) == 0 {
+		return rating, nil
+	}
+
+	// Process the first aggregation result
+	doc, ok := result[0].(primitive.D)
+	if !ok {
+		return rating, errorHandling.NewAPIError(500, "GetBookRatingSummary", "Unexpected aggregation result format")
+	}
+
+	docMap := doc.Map()
+	rating, ok = docMap["ratingAverage"].(float64)
+	if !ok {
+		return rating, errorHandling.NewAPIError(500, "GetBookRatingSummary", "Invalid ratingAverage format")
 	}
 
 	return rating, nil
@@ -264,21 +373,21 @@ func DeleteRatingById(id string, userId string) error {
 	if err == primitive.ErrInvalidHex {
 		return errorHandling.NewAPIError(400, DeleteRatingById, "Invalid rating id")
 	} else if err != nil {
-		return errorHandling.NewAPIError(500, DeleteRatingById, "Something went wrong")
+		return errorHandling.NewAPIError(500, DeleteRatingById, err.Error())
 	}
 
 	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err == primitive.ErrInvalidHex {
 		return errorHandling.NewAPIError(400, DeleteRatingById, "Invalid user id")
 	} else if err != nil {
-		return errorHandling.NewAPIError(500, DeleteRatingById, "Something went wrong")
+		return errorHandling.NewAPIError(500, DeleteRatingById, err.Error())
 	}
 
 	_, err = RatingsCollection.DeleteOne(ctx, bson.M{"_id": idObj, "userId": userIdObj})
 	if err == mongo.ErrNoDocuments {
 		return errorHandling.NewAPIError(404, err, "Rating not found")
 	} else if err != nil {
-		return errorHandling.NewAPIError(500, DeleteRatingById, "Something went wrong")
+		return errorHandling.NewAPIError(500, DeleteRatingById, err.Error())
 	}
 	return nil
 }
