@@ -17,7 +17,7 @@ func main() {
 	if os.Getenv("ENV") != "PROD" {
 		err := godotenv.Load()
 		if err != nil {
-			log.Println("Warning: .env file not found, proceeding with defaults.")
+			log.Fatalln(".env file not found.")
 		}
 	}
 
@@ -55,5 +55,5 @@ func main() {
 		})
 	})
 
-	router.Run("localhost:8080")
+	router.Run("0.0.0.0:8080")
 }
