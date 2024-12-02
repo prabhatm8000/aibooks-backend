@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -63,6 +64,7 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 		session := sessions.Default(c)
 
 		if c.Query("state") != session.Get("state") {
+			log.Println("session.state:", session.Get("state"))
 			c.String(http.StatusBadRequest, "Invalid state parameter.")
 			return
 		}
