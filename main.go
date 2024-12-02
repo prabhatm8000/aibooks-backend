@@ -14,8 +14,13 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	if os.Getenv("ENV") != "PROD" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatalln(".env file not found.")
+		}
+	} else {
+		log.Println("Running in PROD mode.")
 	}
 
 	disconnectMongoDB := config.ConnectMongoDB()
@@ -40,6 +45,8 @@ func main() {
 	}
 	router.Use(cors.New(corsConfigs))
 
+	log.Println("Allowed origin:", frontend)
+
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("auth-session", store))
 
@@ -52,5 +59,5 @@ func main() {
 		})
 	})
 
-	router.Run("localhost:8080")
+	router.Run("0.0.0.0:8080")
 }
