@@ -19,6 +19,8 @@ func main() {
 		if err != nil {
 			log.Fatalln(".env file not found.")
 		}
+	} else {
+		log.Println("Running in PROD mode.")
 	}
 
 	disconnectMongoDB := config.ConnectMongoDB()
@@ -42,6 +44,8 @@ func main() {
 		AllowCredentials: true, // Only works with specific origins, not "*"
 	}
 	router.Use(cors.New(corsConfigs))
+
+	log.Println("Allowed origin:", frontend)
 
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("auth-session", store))
