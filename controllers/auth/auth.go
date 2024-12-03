@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -67,6 +66,7 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 		session := sessions.Default(c)
 
 		log.Println("session.state:", session.Get("state"))
+		log.Println("session.currentUrl:", session.Get("currentUrl"))
 		if c.Query("state") != session.Get("state") {
 			c.String(http.StatusBadRequest, "Invalid state parameter.")
 			return
@@ -145,7 +145,7 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 				returnTo = os.Getenv("FRONTEND_DEV_URL")
 			}
 		}
-		fmt.Println(returnTo)
+
 		c.Redirect(http.StatusTemporaryRedirect, returnTo)
 	}
 }
