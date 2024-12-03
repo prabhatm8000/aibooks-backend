@@ -4,7 +4,6 @@ import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/routes"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -47,13 +46,8 @@ func main() {
 	if secretKey == "" {
 		log.Fatalln("SESSION_SECRET not set")
 	}
+
 	store := cookie.NewStore([]byte(secretKey))
-	store.Options(sessions.Options{
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   ginMode == "release",
-		SameSite: http.SameSiteStrictMode,
-	})
 	router.Use(sessions.Sessions("auth-session", store))
 
 	routes.RegisterRoutes(router)
