@@ -28,24 +28,19 @@ func main() {
 
 	ginMode := os.Getenv("GIN_MODE")
 	gin.SetMode(ginMode)
-	var frontend string
-	switch ginMode {
-	case "release":
-		frontend = os.Getenv("FRONTEND_PROD_URL")
-	default:
-		frontend = os.Getenv("FRONTEND_DEV_URL")
-	}
+	frontendProd := os.Getenv("FRONTEND_PROD_URL")
+	frontendDev := os.Getenv("FRONTEND_DEV_URL")
 	router := gin.Default()
 
 	corsConfigs := cors.Config{
-		AllowOrigins:     []string{frontend},
+		AllowOrigins:     []string{frontendProd, frontendDev},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Accept", "Origin", "X-Requested-With"},
 		AllowCredentials: true, // Only works with specific origins, not "*"
 	}
 	router.Use(cors.New(corsConfigs))
 
-	log.Println("Allowed origin:", frontend)
+	log.Printf("Allowed origin: %s, %s\n", frontendProd, frontendDev)
 
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("auth-session", store))

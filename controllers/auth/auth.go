@@ -43,6 +43,9 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		log.Println("session.state:", session.Get("state"))
+
 		// c.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(state))
 		c.IndentedJSON(200, gin.H{"authUrl": auth.AuthCodeURL(state)})
 	}
@@ -63,8 +66,8 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 
+		log.Println("session.state:", session.Get("state"))
 		if c.Query("state") != session.Get("state") {
-			log.Println("session.state:", session.Get("state"))
 			c.String(http.StatusBadRequest, "Invalid state parameter.")
 			return
 		}
