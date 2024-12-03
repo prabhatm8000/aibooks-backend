@@ -33,6 +33,7 @@ func main() {
 	frontendDev := os.Getenv("FRONTEND_DEV_URL")
 	router := gin.Default()
 
+	// #region CORS
 	corsConfigs := cors.Config{
 		AllowOrigins:     []string{frontendProd, frontendDev},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -40,22 +41,33 @@ func main() {
 		AllowCredentials: true, // Only works with specific origins, not "*"
 	}
 	router.Use(cors.New(corsConfigs))
+	// #endregion
 
 	log.Printf("Allowed origin: %s, %s\n", frontendProd, frontendDev)
 
+	// #region Session cookie
 	secretKey := os.Getenv("SESSION_SECRET")
 	if secretKey == "" {
 		log.Fatalln("SESSION_SECRET not set")
 	}
 	store := cookie.NewStore([]byte(secretKey))
-	store.Options(sessions.Options{
-		Secure:   ginMode == "release",
-		SameSite: http.SameSiteNoneMode,
-	})
+
+	if ginMode == "release" {
+		store.Options(sessions.Options{
+			Path:     "/",
+			Secure:   true,
+			SameSite: http.SameSiteNoneMode,
+		})
+	} else {
+		store.Options(sessions.Options{
+			Path:   "/",
+			Secure: false,
+		})
+	}
 	router.Use(sessions.Sessions("auth-session", store))
+	// #endregion
 
 	routes.RegisterRoutes(router)
-
 	// test route
 	router.GET("/", func(c *gin.Context) {
 		c.IndentedJSON(200, gin.H{
