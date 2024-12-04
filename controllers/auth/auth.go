@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -26,6 +27,7 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
+		state += "+fuck"
 
 		// getting currentUrl from client
 		var currentUrl struct {
@@ -44,7 +46,7 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			return
 		}
 
-		log.Println("session.state in login:", session.Get("state"))
+		log.Println("state in login:", state)
 
 		// Manually set cookies with SameSite=None
 		stateCookie := fmt.Sprintf("state=%s; Path=/; Max-Age=3600; HttpOnly", state)
@@ -81,6 +83,8 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			log.Println("Failed to get state cookie:", err)
 		}
 
+		state = strings.ReplaceAll(state, " ", "+")
+
 		currentUrl, err := c.Cookie("currentUrl")
 		if err != nil {
 			log.Println("Failed to get currentUrl cookie:", err)
@@ -88,8 +92,8 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 
 		session := sessions.Default(c)
 
-		log.Println("session.state in callback:", state)
-		log.Println("session.currentUrl in callback:", currentUrl)
+		log.Println("state in callback:", state)
+		log.Println("currentUrl in callback:", currentUrl)
 
 		if c.Query("state") != state {
 			c.String(http.StatusBadRequest, "Invalid state parameter.")
