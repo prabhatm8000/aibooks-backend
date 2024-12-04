@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -45,14 +46,17 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 
 		log.Println("session.state in login:", session.Get("state"))
 
-		env := os.Getenv("ENV")
-		if env == "PROD" {
-			c.SetCookie("state", state, 3600, "/", "", false, true)
-			c.SetCookie("currentUrl", currentUrl.CurrentUrl, 3600, "/", os.Getenv("FRONTEND_PROD_URL"), false, true)
-		} else {
-			c.SetCookie("state", state, 3600, "/", "", false, true)
-			c.SetCookie("currentUrl", currentUrl.CurrentUrl, 3600, "/", os.Getenv("FRONTEND_DEV_URL"), false, true)
+		// Manually set cookies with SameSite=None
+		stateCookie := fmt.Sprintf("state=%s; Path=/; Max-Age=3600; HttpOnly", state)
+		currentUrlCookie := fmt.Sprintf("currentUrl=%s; Path=/; Max-Age=3600; HttpOnly", currentUrl.CurrentUrl)
+
+		if os.Getenv("ENV") == "PROD" {
+			stateCookie += "; SameSite=None; Secure"
+			currentUrlCookie += "; SameSite=None; Secure"
 		}
+
+		c.Writer.Header().Add("Set-Cookie", stateCookie)
+		c.Writer.Header().Add("Set-Cookie", currentUrlCookie)
 
 		// c.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(state))
 		c.IndentedJSON(200, gin.H{"authUrl": auth.AuthCodeURL(state)})
@@ -74,14 +78,12 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		state, err := c.Cookie("state")
 		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid state parameter.")
-			return
+			log.Println("Failed to get state cookie:", err)
 		}
 
 		currentUrl, err := c.Cookie("currentUrl")
 		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid currentUrl parameter.")
-			return
+			log.Println("Failed to get currentUrl cookie:", err)
 		}
 
 		session := sessions.Default(c)
@@ -220,8 +222,16 @@ func LogoutHandler(c *gin.Context) {
 	parameters.Add("client_id", os.Getenv("AUTH0_CLIENT_ID"))
 	logoutUrl.RawQuery = parameters.Encode()
 
-	c.SetCookie("state", "", -1, "/", "", false, true)
-	c.SetCookie("auth-session", "", -1, "/", "", false, true)
+	stateCookie := "state=x; Path=/; Max-Age=0; HttpOnly"
+	currentUrlCookie := "currentUrl=x; Path=/; Max-Age=0; HttpOnly"
+
+	if os.Getenv("ENV") == "PROD" {
+		stateCookie += "; SameSite=None; Secure"
+		currentUrlCookie += "; SameSite=None; Secure"
+	}
+
+	c.Writer.Header().Add("Set-Cookie", stateCookie)
+	c.Writer.Header().Add("Set-Cookie", currentUrlCookie)
 
 	c.IndentedJSON(200, gin.H{"authUrl": logoutUrl.String()})
 	// c.Redirect(http.StatusTemporaryRedirect, logoutUrl.String())
