@@ -3,8 +3,10 @@ package books
 import (
 	"example/aibooks-backend/config/imageconfigs"
 	"example/aibooks-backend/models/books"
+	"fmt"
 	"strconv"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -145,6 +147,9 @@ func SearchSuggestions(c *gin.Context) {
 
 func GetLatestBooks(c *gin.Context) {
 	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "20"), 10, 64)
+
+	session := sessions.Default(c)
+	fmt.Println("session state in latest books:", session.Get("state"))
 
 	latestBooks, err := books.GetAllBooks(1, limit, "", "createdAt", 1)
 	if err != nil {
