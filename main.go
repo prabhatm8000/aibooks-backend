@@ -4,6 +4,7 @@ import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/routes"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -51,8 +52,10 @@ func main() {
 	}
 	store := cookie.NewStore([]byte(secretKey))
 	store.Options(sessions.Options{
-		Path:   "/",
-		Secure: false,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   ginMode == "release", // Ensure cookies are secure in production (HTTPS)
+		SameSite: http.SameSiteLaxMode, // Adjust as needed
 	})
 	router.Use(sessions.Sessions("auth-session", store))
 	// #endregion
