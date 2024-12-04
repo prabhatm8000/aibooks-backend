@@ -50,18 +50,10 @@ func main() {
 		log.Fatalln("SESSION_SECRET not set")
 	}
 	store := cookie.NewStore([]byte(secretKey))
-
-	if ginMode == "release" {
-		store.Options(sessions.Options{
-			Path:   "/",
-			Secure: true,
-		})
-	} else {
-		store.Options(sessions.Options{
-			Path:   "/",
-			Secure: false,
-		})
-	}
+	store.Options(sessions.Options{
+		Path:   "/",
+		Secure: false,
+	})
 	router.Use(sessions.Sessions("auth-session", store))
 	// #endregion
 

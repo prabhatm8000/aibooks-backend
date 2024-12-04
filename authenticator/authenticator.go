@@ -25,8 +25,8 @@ func New() (*Authenticator, error) {
 	}
 
 	var backendUrl string
-	switch os.Getenv("GIN_MODE") {
-	case "release":
+	switch os.Getenv("ENV") {
+	case "PROD":
 		backendUrl = os.Getenv("BACKEND_PROD_URL")
 	default:
 		backendUrl = os.Getenv("BACKEND_DEV_URL")

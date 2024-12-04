@@ -137,9 +137,9 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 		var returnTo string = session.Get("currentUrl").(string)
 
 		if returnTo == "" {
-			ginMode := os.Getenv("GIN_MODE")
-			switch ginMode {
-			case "release":
+			ENV := os.Getenv("ENV")
+			switch ENV {
+			case "PROD":
 				returnTo = os.Getenv("FRONTEND_PROD_URL")
 			default:
 				returnTo = os.Getenv("FRONTEND_DEV_URL")
@@ -177,10 +177,10 @@ func LogoutHandler(c *gin.Context) {
 		return
 	}
 
-	ginMode := os.Getenv("GIN_MODE")
+	env := os.Getenv("ENV")
 	var returnTo string
-	switch ginMode {
-	case "release":
+	switch env {
+	case "PROD":
 		returnTo = os.Getenv("FRONTEND_PROD_URL")
 	default:
 		returnTo = os.Getenv("FRONTEND_DEV_URL")
