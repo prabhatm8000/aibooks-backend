@@ -4,7 +4,6 @@ import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/routes"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -54,9 +53,8 @@ func main() {
 
 	if ginMode == "release" {
 		store.Options(sessions.Options{
-			Path:     "/",
-			Secure:   true,
-			SameSite: http.SameSiteNoneMode,
+			Path:   "/",
+			Secure: true,
 		})
 	} else {
 		store.Options(sessions.Options{
