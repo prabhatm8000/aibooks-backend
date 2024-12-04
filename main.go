@@ -3,7 +3,6 @@ package main
 import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/routes"
-	"example/aibooks-backend/utils"
 	"log"
 	"net/http"
 	"os"
@@ -55,12 +54,19 @@ func main() {
 	store := cookie.NewStore([]byte(secretKey))
 
 	env := os.Getenv("ENV")
-	store.Options(sessions.Options{
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   env == "PROD",
-		SameSite: utils.Ternary[http.SameSite](env == "PROD", http.SameSiteNoneMode, http.SameSiteLaxMode),
-	})
+	if env == "PROD" {
+		store.Options(sessions.Options{
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteNoneMode,
+		})
+	} else {
+		store.Options(sessions.Options{
+			Path:     "/",
+			HttpOnly: true,
+		})
+	}
 
 	router.Use(sessions.Sessions("auth-session", store))
 	// #endregion
