@@ -50,13 +50,24 @@ func main() {
 	if secretKey == "" {
 		log.Fatalln("SESSION_SECRET not set")
 	}
+
 	store := cookie.NewStore([]byte(secretKey))
-	store.Options(sessions.Options{
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   ginMode == "release", // Ensure cookies are secure in production (HTTPS)
-		SameSite: http.SameSiteLaxMode, // Adjust as needed
-	})
+
+	if os.Getenv("ENV") == "PROD" {
+		store.Options(sessions.Options{
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteNoneMode,
+		})
+	} else {
+		store.Options(sessions.Options{
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
 	router.Use(sessions.Sessions("auth-session", store))
 	// #endregion
 

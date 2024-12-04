@@ -43,7 +43,16 @@ func LoginHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			return
 		}
 
-		log.Println("session.state:", session.Get("state"))
+		log.Println("session.state in login:", session.Get("state"))
+
+		env := os.Getenv("ENV")
+		if env == "PROD" {
+			c.SetCookie("state", state, 3600, "/", "", false, true)
+			c.SetCookie("currentUrl", currentUrl.CurrentUrl, 3600, "/", os.Getenv("FRONTEND_PROD_URL"), false, true)
+		} else {
+			c.SetCookie("state", state, 3600, "/", "", false, true)
+			c.SetCookie("currentUrl", currentUrl.CurrentUrl, 3600, "/", os.Getenv("FRONTEND_DEV_URL"), false, true)
+		}
 
 		// c.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(state))
 		c.IndentedJSON(200, gin.H{"authUrl": auth.AuthCodeURL(state)})
@@ -63,11 +72,24 @@ func generateRandomState() (string, error) {
 
 func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		state, err := c.Cookie("state")
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid state parameter.")
+			return
+		}
+
+		currentUrl, err := c.Cookie("currentUrl")
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid currentUrl parameter.")
+			return
+		}
+
 		session := sessions.Default(c)
 
-		log.Println("session.state:", session.Get("state"))
-		log.Println("session.currentUrl:", session.Get("currentUrl"))
-		if c.Query("state") != session.Get("state") {
+		log.Println("session.state in callback:", state)
+		log.Println("session.currentUrl in callback:", currentUrl)
+
+		if c.Query("state") != state {
 			c.String(http.StatusBadRequest, "Invalid state parameter.")
 			return
 		}
@@ -134,7 +156,8 @@ func CallbackHandler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			return
 		}
 
-		var returnTo string = session.Get("currentUrl").(string)
+		// var returnTo string = session.Get("currentUrl").(string)
+		var returnTo string = currentUrl
 
 		if returnTo == "" {
 			ENV := os.Getenv("ENV")
@@ -196,6 +219,9 @@ func LogoutHandler(c *gin.Context) {
 	parameters.Add("returnTo", returnTo)
 	parameters.Add("client_id", os.Getenv("AUTH0_CLIENT_ID"))
 	logoutUrl.RawQuery = parameters.Encode()
+
+	c.SetCookie("state", "", -1, "/", "", false, true)
+	c.SetCookie("auth-session", "", -1, "/", "", false, true)
 
 	c.IndentedJSON(200, gin.H{"authUrl": logoutUrl.String()})
 	// c.Redirect(http.StatusTemporaryRedirect, logoutUrl.String())
