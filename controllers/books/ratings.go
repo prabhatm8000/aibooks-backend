@@ -4,7 +4,6 @@ import (
 	"example/aibooks-backend/models/books"
 	"strconv"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -17,9 +16,8 @@ func AddRating(c *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
-	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
+	userId := c.GetString("user_id")
+	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
@@ -51,10 +49,8 @@ func GetRatingsById(c *gin.Context) {
 func GetMyRatingForBookId(c *gin.Context) {
 	bookId := c.Param("bookId")
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
-
-	rating, err := books.GetMyRatingForBookId(userId.(string), bookId)
+	userId := c.GetString("user_id")
+	rating, err := books.GetMyRatingForBookId(userId, bookId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
@@ -81,10 +77,9 @@ func GetRatingsByBookId(c *gin.Context) {
 
 func DeleteRatingById(c *gin.Context) {
 	id := c.Param("ratingId")
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
+	userId := c.GetString("user_id")
 
-	err := books.DeleteRatingById(id, userId.(string))
+	err := books.DeleteRatingById(id, userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return

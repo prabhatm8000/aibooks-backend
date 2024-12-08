@@ -1,28 +1,22 @@
 package routes
 
 import (
-	"example/aibooks-backend/authenticator"
 	"example/aibooks-backend/controllers/auth"
-	"log"
+	"example/aibooks-backend/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterAuthRoutes(r *gin.RouterGroup) {
-	authObj, err := authenticator.New()
-	if err != nil {
-		log.Fatalf("Failed to create authenticator: %v", err)
-	}
-
 	authGrp := r.Group("/auth")
 
 	{
-		authGrp.POST("/login", auth.LoginHandler(authObj))
+		authGrp.POST("/login", auth.Login)
 
-		authGrp.GET("/callback", auth.CallbackHandler(authObj))
+		authGrp.POST("/create", auth.CreateAccount)
 
-		authGrp.GET("/logout", auth.LogoutHandler)
+		authGrp.Use(middleware.IsAuthenticated).GET("/logout", auth.Logout)
 
-		authGrp.GET("/user", auth.UserProfileHandler)
+		authGrp.Use(middleware.IsAuthenticated).GET("/user", auth.GetUserDetails)
 	}
 }

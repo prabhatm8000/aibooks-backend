@@ -3,6 +3,8 @@ package users
 import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/errorHandling"
+	"fmt"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,29 +13,12 @@ import (
 
 type Users struct {
 	Id            primitive.ObjectID `bson:"_id" json:"id"`
-	Aud           string             `bson:"aud" json:"aud"`
 	Email         string             `bson:"email" json:"email"`
 	EmailVerified bool               `bson:"email_verified" json:"email_verified"`
-	Exp           int64              `bson:"exp" json:"exp"`
-	FamilyName    string             `bson:"family_name" json:"family_name"`
-	GivenName     string             `bson:"given_name" json:"given_name"`
-	Iat           int64              `bson:"iat" json:"iat"`
-	Iss           string             `bson:"iss" json:"iss"`
-	Name          string             `bson:"name" json:"name"`
-	Nickname      string             `bson:"nickname" json:"nickname"`
-	Picture       string             `bson:"picture" json:"picture"`
-	Sid           string             `bson:"sid" json:"sid"`
-	Sub           string             `bson:"sub" json:"sub"`
+	FirstName     string             `bson:"first_name" json:"first_name"`
+	LastName      string             `bson:"last_name" json:"last_name"`
+	Password      string             `bson:"password" json:"password"`
 	UpdatedAt     primitive.DateTime `bson:"updated_at" json:"updated_at"`
-}
-
-type UserShort struct {
-	Id         primitive.ObjectID `bson:"_id" json:"id"`
-	Name       string             `bson:"name" json:"name"`
-	GivenName  string             `bson:"given_name" json:"given_name"`
-	FamilyName string             `bson:"family_name" json:"family_name"`
-	Picture    string             `bson:"picture" json:"picture"`
-	Nickname   string             `bson:"nickname" json:"nickname"`
 }
 
 var UsersCollectionName string = "users"
@@ -48,22 +33,14 @@ func AddUser(user Users) (primitive.ObjectID, error) {
 	defer cancel()
 
 	var existingUser Users
-	err := UsersCollection.FindOne(ctx, bson.M{"sub": user.Sub, "email": user.Email}).Decode(&existingUser)
-	if err == nil && existingUser.Sub == user.Sub && existingUser.Email == user.Email {
+	err := UsersCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&existingUser)
+	if err == nil && existingUser.Email == user.Email {
 		_, err = UsersCollection.UpdateByID(ctx, existingUser.Id, bson.M{"$set": bson.M{
-			"aud":            user.Aud,
+			"email":          user.Email,
 			"email_verified": user.EmailVerified,
-			"exp":            user.Exp,
-			"family_name":    user.FamilyName,
-			"given_name":     user.GivenName,
-			"iat":            user.Iat,
-			"iss":            user.Iss,
-			"name":           user.Name,
-			"nickname":       user.Nickname,
-			"picture":        user.Picture,
-			"sid":            user.Sid,
-			"sub":            user.Sub,
-			"updated_at":     user.UpdatedAt,
+			"first_name":     user.FirstName,
+			"last_name":      user.LastName,
+			"password":       user.Password,
 		}})
 		if err != nil {
 			return primitive.NilObjectID, errorHandling.NewAPIError(500, AddUser, err.Error())
@@ -90,7 +67,10 @@ func GetUserById(id string) (Users, error) {
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
+	fmt.Println("userId", strings.Index(id, "ID"))
+
 	idObj, err := primitive.ObjectIDFromHex(id)
+	fmt.Println("shit", idObj)
 	if err == primitive.ErrInvalidHex {
 		return user, errorHandling.NewAPIError(400, GetUserById, "Invalid user id")
 	} else if err != nil {
@@ -107,7 +87,7 @@ func GetUserById(id string) (Users, error) {
 	return user, nil
 }
 
-func GetUserBySub(sub string) (Users, error) {
+func GetUserByEmail(email string) (Users, error) {
 	if UsersCollection == nil {
 		UsersCollection = config.GetCollection(UsersCollectionName)
 	}
@@ -116,11 +96,11 @@ func GetUserBySub(sub string) (Users, error) {
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
-	err := UsersCollection.FindOne(ctx, bson.M{"sub": sub}).Decode(&user)
+	err := UsersCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err == mongo.ErrNoDocuments {
 		return user, errorHandling.NewAPIError(404, err, "User not found")
 	} else if err != nil {
-		return user, errorHandling.NewAPIError(500, GetUserBySub, err.Error())
+		return user, errorHandling.NewAPIError(500, GetUserById, err.Error())
 	}
 
 	return user, nil

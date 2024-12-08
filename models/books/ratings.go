@@ -29,7 +29,7 @@ type RatingResponse struct {
 	Review    string             `bson:"review" json:"review"`
 	CreatedAt primitive.DateTime `bson:"createdAt" json:"createdAt"`
 	UpdatedAt primitive.DateTime `bson:"updatedAt" json:"updatedAt"`
-	User      users.UserShort    `bson:"user" json:"user"`
+	User      users.Users        `bson:"user" json:"user"`
 }
 
 var RatingsCollectionName string = "ratings"
@@ -260,10 +260,10 @@ func GetRatingsByBookId(bookId string, limit int, page int, sortBy string, sortO
 				"createdAt": 1,
 				"updatedAt": 1,
 				"user": bson.M{
-					"_id":      1,
-					"picture":  1,
-					"name":     1,
-					"nickname": 1,
+					"_id":        1,
+					"first_name": 1,
+					"last_name":  1,
+					"email":      1,
 				},
 			},
 		},

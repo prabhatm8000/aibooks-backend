@@ -6,7 +6,6 @@ import (
 	"example/aibooks-backend/models/userlibrarys"
 	"strconv"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -14,8 +13,7 @@ import (
 func AddBookToLibrary(c *gin.Context) {
 	bookId := c.Param("bookId")
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
+	userId := c.GetString("user_id")
 
 	bookIdObj, err := primitive.ObjectIDFromHex(bookId)
 	if err != nil {
@@ -23,7 +21,7 @@ func AddBookToLibrary(c *gin.Context) {
 		return
 	}
 
-	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
+	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
@@ -41,8 +39,7 @@ func AddBookToLibrary(c *gin.Context) {
 func RemoveBookFromLibrary(c *gin.Context) {
 	bookId := c.Param("bookId")
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
+	userId := c.GetString("user_id")
 
 	bookIdObj, err := primitive.ObjectIDFromHex(bookId)
 	if err != nil {
@@ -50,7 +47,7 @@ func RemoveBookFromLibrary(c *gin.Context) {
 		return
 	}
 
-	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
+	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
@@ -69,10 +66,9 @@ func GetMyLibrary(c *gin.Context) {
 	page, _ := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
+	userId := c.GetString("user_id")
 
-	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
+	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
@@ -124,8 +120,7 @@ func GetMyLibrary(c *gin.Context) {
 func IsBookInLibrary(c *gin.Context) {
 	bookId := c.Param("bookId")
 
-	session := sessions.Default(c)
-	userId := session.Get("user_id")
+	userId := c.GetString("user_id")
 
 	bookIdObj, err := primitive.ObjectIDFromHex(bookId)
 	if err != nil {
@@ -133,7 +128,7 @@ func IsBookInLibrary(c *gin.Context) {
 		return
 	}
 
-	userIdObj, err := primitive.ObjectIDFromHex(userId.(string))
+	userIdObj, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
 		return
