@@ -3,6 +3,7 @@ package users
 import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/errorHandling"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -39,6 +40,7 @@ func AddUser(user Users) (primitive.ObjectID, error) {
 			"first_name":     user.FirstName,
 			"last_name":      user.LastName,
 			"password":       user.Password,
+			"updated_at":     primitive.NewDateTimeFromTime(time.Now()),
 		}})
 		if err != nil {
 			return primitive.NilObjectID, errorHandling.NewAPIError(500, AddUser, err.Error())
