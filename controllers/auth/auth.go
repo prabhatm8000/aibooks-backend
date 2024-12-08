@@ -70,8 +70,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(existingUser.Id.Hex())
-
 	createJWTTokenCookie(c, existingUser.Id.Hex())
 	c.IndentedJSON(200, gin.H{
 		"message": "Success",
@@ -91,11 +89,11 @@ func createJWTTokenCookie(c *gin.Context, userId string) {
 
 	secure := os.Getenv("ENV") == "PROD"
 
-	c.SetCookie("auth-token", tokenString, 60*60*24*3, "/", "", secure, true)
+	c.Header("Set-Cookie", fmt.Sprintf("auth-token=%s; SameSite=None; Secure=%v; Path=/", tokenString, secure))
 }
 
 func Logout(c *gin.Context) {
-	c.SetCookie("auth-token", "", -1, "/", "", false, true)
+	c.Header("Set-Cookie", fmt.Sprintf("auth-token=%s; SameSite=None; Secure=%v; Path=/", "", false))
 	c.IndentedJSON(200, gin.H{"message": "Successfully logged out"})
 }
 

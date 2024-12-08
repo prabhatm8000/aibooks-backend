@@ -3,8 +3,6 @@ package users
 import (
 	"example/aibooks-backend/config"
 	"example/aibooks-backend/errorHandling"
-	"fmt"
-	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -67,10 +65,7 @@ func GetUserById(id string) (Users, error) {
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
-	fmt.Println("userId", strings.Index(id, "ID"))
-
 	idObj, err := primitive.ObjectIDFromHex(id)
-	fmt.Println("shit", idObj)
 	if err == primitive.ErrInvalidHex {
 		return user, errorHandling.NewAPIError(400, GetUserById, "Invalid user id")
 	} else if err != nil {
