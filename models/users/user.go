@@ -31,6 +31,8 @@ func AddUser(user Users) (primitive.ObjectID, error) {
 	ctx, cancel := config.GetDBCtx()
 	defer cancel()
 
+	user.UpdatedAt = primitive.NewDateTimeFromTime(time.Now())
+
 	var existingUser Users
 	err := UsersCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&existingUser)
 	if err == nil && existingUser.Email == user.Email {
@@ -40,7 +42,7 @@ func AddUser(user Users) (primitive.ObjectID, error) {
 			"first_name":     user.FirstName,
 			"last_name":      user.LastName,
 			"password":       user.Password,
-			"updated_at":     primitive.NewDateTimeFromTime(time.Now()),
+			"updated_at":     user.UpdatedAt,
 		}})
 		if err != nil {
 			return primitive.NilObjectID, errorHandling.NewAPIError(500, AddUser, err.Error())

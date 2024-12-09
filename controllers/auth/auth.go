@@ -8,20 +8,30 @@ import (
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 
+	"example/aibooks-backend/errorHandling"
+	"example/aibooks-backend/models/otps"
 	"example/aibooks-backend/models/users"
+	"example/aibooks-backend/utils"
 )
 
 func CreateAccount(c *gin.Context) {
 	var data struct {
-		FirstName       string `json:"firstName" binding:"required"`
-		LastName        string `json:"lastName" binding:"required"`
+		FirstName       string `json:"first_name" binding:"required"`
+		LastName        string `json:"last_name" binding:"required"`
 		Email           string `json:"email" binding:"required,email"`
+		Otp             string `json:"otp" binding:"required"`
 		Password        string `json:"password" binding:"required,min=8"`
 		ConfirmPassword string `json:"confirmPassword" binding:"required,min=8,eqfield=Password"`
 	}
 
 	if err := c.ShouldBindJSON(&data); err != nil {
+		fmt.Println(err)
 		c.IndentedJSON(400, gin.H{"message": "Invalid request"})
+		return
+	}
+
+	if !otps.CompareOtp(data.Email, data.Otp) {
+		c.IndentedJSON(400, gin.H{"message": "Invalid OTP"})
 		return
 	}
 
@@ -32,10 +42,11 @@ func CreateAccount(c *gin.Context) {
 	}
 
 	user := users.Users{
-		FirstName: data.FirstName,
-		LastName:  data.LastName,
-		Email:     data.Email,
-		Password:  string(bcryptPassword),
+		FirstName:     data.FirstName,
+		LastName:      data.LastName,
+		Email:         data.Email,
+		Password:      string(bcryptPassword),
+		EmailVerified: true,
 	}
 	userId, err := users.AddUser(user)
 	if err != nil {
@@ -106,4 +117,32 @@ func GetUserDetails(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, user)
+}
+
+func SendOtp(c *gin.Context) {
+	var data struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong."})
+		return
+	}
+
+	otp, err := otps.GenerateAndSaveOtpFor(data.Email)
+	if err == errorHandling.ErrTooSoon {
+		c.IndentedJSON(400, gin.H{"message": "Too soon, please try again later."})
+		return
+	} else if err != nil {
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong generating OTP."})
+		return
+	}
+
+	err = utils.SendOtpEmail(data.Email, otp)
+	if err != nil {
+		c.IndentedJSON(400, gin.H{"message": "Uh oh! Something went wrong sending OTP."})
+		return
+	}
+
+	c.IndentedJSON(200, gin.H{"message": "OTP sent successfully"})
 }

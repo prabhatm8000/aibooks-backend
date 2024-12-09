@@ -13,6 +13,8 @@ func RegisterAuthRoutes(r *gin.RouterGroup) {
 	{
 		authGrp.POST("/login", auth.Login)
 
+		authGrp.POST("/sendOtp", auth.SendOtp)
+
 		authGrp.POST("/create", auth.CreateAccount)
 
 		authGrp.Use(middleware.IsAuthenticated).GET("/logout", auth.Logout)
